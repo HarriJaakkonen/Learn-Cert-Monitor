@@ -270,7 +270,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👨‍💻 Author
 
 **Harri Jaakkonen**
-- Email: harri.jaakkonen@yourdomain.com
 - LinkedIn: [Connect with me](https://linkedin.com/in/harrijaakkonen)
 
 ## 🙏 Acknowledgments
