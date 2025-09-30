@@ -30,25 +30,25 @@ Learn-Cert-Monitor/
 ### 1. Manual Certificate Check
 ```powershell
 # Basic check with notifications
-.\get-learncerts-api.ps1 -ShareCode "vpznbwkno4ryzl7"
+.\get-learncerts-api.ps1 -ShareCode "ABC123XYZ"
 
 # Detailed console output
-.\get-learncerts-api.ps1 -ShareCode "vpznbwkno4ryzl7" -VerboseConsole
+.\get-learncerts-api.ps1 -ShareCode "ABC123XYZ" -VerboseConsole
 ```
 
 ### 2. Smart Automation Setup (Recommended) 🧠
 ```powershell
 # Intelligent twice-daily monitoring (9 AM & 3 PM) when user is active
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "vpznbwkno4ryzl7"
+.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "ABC123XYZ"
 ```
 
 ### 3. Alternative Automation Methods
 ```powershell
 # Simple startup automation (runs at Windows startup)
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Startup" -ShareCode "vpznbwkno4ryzl7"
+.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Startup" -ShareCode "ABC123XYZ"
 
 # Registry-based automation (runs at user login)
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Registry" -ShareCode "vpznbwkno4ryzl7"
+.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Registry" -ShareCode "ABC123XYZ"
 ```
 
 ### 4. Testing & Validation
@@ -196,7 +196,7 @@ Shows: Multi-tier notifications
 
 ### Essential Parameters
 ```powershell
--ShareCode "vpznbwkno4ryzl7"           # Your Microsoft Learn transcript share code
+-ShareCode "ABC123XYZ"                  # Your Microsoft Learn transcript share code
 -TranscriptUrl "https://learn..."       # Alternative: Full transcript URL
 -CreateAutomation                       # Enable automation setup mode
 -AutomationMethod "Smart"               # Automation type (Smart/Startup/Registry/Remove)
@@ -256,14 +256,14 @@ Get-ChildItem *smart*.ps1
 **3. Subprocess execution failures**
 ```powershell
 # Test main script manually
-.\get-learncerts-api.ps1 -ShareCode "vpznbwkno4ryzl7" -VerboseConsole
+.\get-learncerts-api.ps1 -ShareCode "ABC123XYZ" -VerboseConsole
 ```
 
 **4. Automation setup issues**
 ```powershell
 # Remove and recreate automation
 .\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Remove"
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "vpznbwkno4ryzl7"
+.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "ABC123XYZ"
 ```
 
 ### Diagnostic Commands

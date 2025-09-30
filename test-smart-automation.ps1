@@ -87,7 +87,7 @@ Write-Host "`n🔔 Step 4: Testing notification execution..." -ForegroundColor Y
 
 Write-Host "   Testing subprocess notification..." -ForegroundColor White
 $scriptPath = "C:\Repos\Learn-Cert-Monitor\get-learncerts-api.ps1"
-$arguments = @("-ExecutionPolicy", "Bypass", "-File", $scriptPath, "-ShareCode", "vpznbwkno4ryzl7")
+$arguments = @("-ExecutionPolicy", "Bypass", "-File", $scriptPath, "-ShareCode", "ABC123XYZ")
 
 # Test with different window styles
 $windowStyles = @("Normal", "Minimized", "Hidden")
@@ -131,7 +131,7 @@ Write-Host "🧠 Smart Monitor Started: `$(Get-Date)" -ForegroundColor Cyan
 
 # Configuration
 `$MainScript = "C:\Repos\Learn-Cert-Monitor\get-learncerts-api.ps1"
-`$ShareCode = "vpznbwkno4ryzl7"
+`$ShareCode = "ABC123XYZ"
 `$StateFile = Join-Path `$env:TEMP "smart-monitor-simple.json"
 
 # Simple activity check

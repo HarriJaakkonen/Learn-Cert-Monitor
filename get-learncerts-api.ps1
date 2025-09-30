@@ -18,11 +18,11 @@
 
 .PARAMETER TranscriptUrl
     Your Microsoft Learn transcript share link URL. The script will extract the share code from this URL.
-    Example: https://learn.microsoft.com/en-us/users/harrijaakkonen-6993/transcript/vpznbwkno4ryzl7
+    Example: https://learn.microsoft.com/en-us/users/yourusername/transcript/ABC123XYZ
 
 .PARAMETER ShareCode
     Alternatively, you can provide just the share code directly instead of the full URL.
-    Example: vpznbwkno4ryzl7
+    Example: ABC123XYZ
 
 .PARAMETER SendEmail
     Enables email notifications in addition to desktop popups. Requires SMTP configuration in the script.
@@ -54,11 +54,11 @@
     Enables extensive debugging output specifically for Task Scheduler execution issues.
 
 .EXAMPLE
-    .\get-learncerts-api.ps1 -TranscriptUrl "https://learn.microsoft.com/en-us/users/harrijaakkonen-6993/transcript/vpznbwkno4ryzl7"
+    .\get-learncerts-api.ps1 -TranscriptUrl "https://learn.microsoft.com/en-us/users/yourusername/transcript/ABC123XYZ"
     Runs a one-time manual check using your transcript URL and shows desktop notifications for expiring certifications.
 
 .EXAMPLE
-    .\get-learncerts-api.ps1 -ShareCode "vpznbwkno4ryzl7"
+    .\get-learncerts-api.ps1 -ShareCode "ABC123XYZ"
     Runs a manual check using just the share code extracted from your transcript URL.
 
 .EXAMPLE
@@ -66,11 +66,11 @@
     Runs a check with desktop notifications, email alerts, and detailed console output.
 
 .EXAMPLE
-    .\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "vpznbwkno4ryzl7"
+    .\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "ABC123XYZ"
     Sets up smart activity-based automation that monitors twice daily (9 AM & 3 PM) only when you're actively using the computer.
 
 .EXAMPLE
-    .\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Startup" -ShareCode "vpznbwkno4ryzl7" -SendEmail
+    .\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Startup" -ShareCode "ABC123XYZ" -SendEmail
     Sets up simple startup automation that runs the certificate check every time Windows starts, with email notifications enabled.
 
 .EXAMPLE
