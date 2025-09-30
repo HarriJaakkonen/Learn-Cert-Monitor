@@ -8,10 +8,9 @@ A PowerShell-based monitoring solution to track Microsoft Learn certification ex
 Learn-Cert-Monitor/
 ├── get-learncerts-api.ps1           # 🚀 Main certificate monitoring script
 ├── test-smart-automation.ps1        # 🧪 Comprehensive testing framework
-├── smart-test.ps1                   # ⚡ Generated simplified automation (auto-created)
-├── cert-monitor-smart.ps1           # 🧠 Generated smart monitoring script (auto-created)
 ├── README.md                        # This file - comprehensive documentation
-└── Various test scripts             # 🔧 Diagnostic and testing utilities
+└── assets/
+    └── microsoft-logo.png           # �️ Microsoft logo for notifications
 ```
 
 ## 🔄 Current Version Status
