@@ -1258,56 +1258,59 @@ function Setup-UserAutomation {
                 Write-Host "✅ Startup automation configured" -ForegroundColor Green
                 Write-Host "📁 Location: $shortcutPath" -ForegroundColor White
                 Write-Host "🔄 Script will run at Windows startup (hidden)" -ForegroundColor Cyan
-            
+                return $true
             }
             catch {
                 Write-Host "❌ Failed to setup startup automation: $($_.Exception.Message)" -ForegroundColor Red
                 return $false
             }
-            elseif ($Method -eq "Registry") {
-                $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
-                $regName = "CertificationMonitor"
-            
-                if ($Remove) {
-                    try {
-                        Remove-ItemProperty -Path $regPath -Name $regName -ErrorAction Stop
-                        Write-Host "✅ Removed registry run automation" -ForegroundColor Green
-                        return $true
-                    }
-                    catch {
-                        Write-Host "❌ No registry automation found to remove" -ForegroundColor Yellow
-                        return $false
-                    }
-                }
-            
-                # Build command string
-                $argString = if ($Arguments.Count -gt 0) { " " + ($Arguments -join " ") } else { "" }
-                $command = "pwsh.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`"$argString"
-            
+        }
+        elseif ($Method -eq "Registry") {
+            $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+            $regName = "CertificationMonitor"
+        
+            if ($Remove) {
                 try {
-                    Set-ItemProperty -Path $regPath -Name $regName -Value $command
-            
-                    Write-Host "✅ Registry run automation configured" -ForegroundColor Green
-                    Write-Host "📋 Registry: $regPath\$regName" -ForegroundColor White
-                    Write-Host "🔄 Script will run at user login (hidden)" -ForegroundColor Cyan
+                    Remove-ItemProperty -Path $regPath -Name $regName -ErrorAction Stop
+                    Write-Host "✅ Removed registry run automation" -ForegroundColor Green
+                    return $true
                 }
                 catch {
-                    Write-Host "❌ Failed to setup registry automation: $($_.Exception.Message)" -ForegroundColor Red
+                    Write-Host "❌ No registry automation found to remove" -ForegroundColor Yellow
+                    return $false
                 }
+            }
         
+            # Build command string
+            $argString = if ($Arguments.Count -gt 0) { " " + ($Arguments -join " ") } else { "" }
+            $command = "pwsh.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`"$argString"
+        
+            try {
+                Set-ItemProperty -Path $regPath -Name $regName -Value $command
+        
+                Write-Host "✅ Registry run automation configured" -ForegroundColor Green
+                Write-Host "📋 Registry: $regPath\$regName" -ForegroundColor White
+                Write-Host "🔄 Script will run at user login (hidden)" -ForegroundColor Cyan
+                
                 Write-Host "`n💡 Benefits of user automation:" -ForegroundColor Yellow
                 Write-Host "  • No administrator privileges required" -ForegroundColor Green
                 Write-Host "  • Runs in your user session (notifications work)" -ForegroundColor Green
                 Write-Host "  • Easy to remove or modify" -ForegroundColor Green
                 Write-Host "  • Respects user login status" -ForegroundColor Green
-        
+                return $true
+            }
+            catch {
+                Write-Host "❌ Failed to setup registry automation: $($_.Exception.Message)" -ForegroundColor Red
+                return $false
             }
         }
     }
     catch {
         Write-Host "❌ Failed to setup automation: $($_.Exception.Message)" -ForegroundColor Red
         return $false
-    }        return $true
+    }
+    
+    return $true
 }
 #endregion ============================
 
@@ -1377,14 +1380,14 @@ Generated on: $(Get-Date)
 #>
 
 # Configuration
-$MainScriptPath = "$ScriptPath"
-$MainScriptArgs = @($($Arguments | ForEach-Object { '"' + $_ + '"' }) -join ', ')
-$NotificationTimes = @("09:00", "15:00")  # 9 AM and 3 PM
-$ActivityCheckMinutes = 5  # Check if user was active in last 5 minutes
-$CheckIntervalMinutes = 30  # Check every 30 minutes
+`$MainScriptPath = "$ScriptPath"
+`$MainScriptArgs = @("$($Arguments -join '", "')")
+`$NotificationTimes = @("09:00", "15:00")  # 9 AM and 3 PM
+`$ActivityCheckMinutes = 5  # Check if user was active in last 5 minutes
+`$CheckIntervalMinutes = 30  # Check every 30 minutes
 
 # State file to track last notification
-$StateFile = Join-Path $env:TEMP "cert-monitor-state.json"
+`$StateFile = Join-Path `$env:TEMP "cert-monitor-state.json"
 
 function Test-UserActivity {
     <#
@@ -1407,29 +1410,29 @@ function Test-UserActivity {
             }
         '
         
-        $lastInputInfo = New-Object Win32+LASTINPUTINFO
-        $lastInputInfo.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($lastInputInfo)
+        `$lastInputInfo = New-Object Win32+LASTINPUTINFO
+        `$lastInputInfo.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf(`$lastInputInfo)
         
-        if ([Win32]::GetLastInputInfo([ref]$lastInputInfo)) {
-            $tickCount = [Environment]::TickCount
-            $idleTime = ($tickCount - $lastInputInfo.dwTime) / 1000 / 60  # Convert to minutes
+        if ([Win32]::GetLastInputInfo([ref]`$lastInputInfo)) {
+            `$tickCount = [Environment]::TickCount
+            `$idleTime = (`$tickCount - `$lastInputInfo.dwTime) / 1000 / 60  # Convert to minutes
             
-            Write-Host "🔍 User idle time: $([math]::Round($idleTime, 1)) minutes" -ForegroundColor Gray
-            return $idleTime -lt $ActivityCheckMinutes
+            Write-Host "🔍 User idle time: `$([math]::Round(`$idleTime, 1)) minutes" -ForegroundColor Gray
+            return `$idleTime -lt `$ActivityCheckMinutes
         }
     } catch {
         Write-Host "⚠️ Could not check user activity, assuming active" -ForegroundColor Yellow
-        return $true
+        return `$true
     }
     
-    return $false
+    return `$false
 }
 
 function Get-LastNotificationState {
-    if (Test-Path $StateFile) {
+    if (Test-Path `$StateFile) {
         try {
-            $state = Get-Content $StateFile | ConvertFrom-Json
-            return $state
+            `$state = Get-Content `$StateFile | ConvertFrom-Json
+            return `$state
         } catch {
             return @{ LastNotifications = @() }
         }
@@ -1438,89 +1441,89 @@ function Get-LastNotificationState {
 }
 
 function Save-NotificationState {
-    param($State)
+    param(`$State)
     try {
-        $State | ConvertTo-Json | Set-Content $StateFile
+        `$State | ConvertTo-Json | Set-Content `$StateFile
     } catch {
         Write-Host "⚠️ Could not save notification state" -ForegroundColor Yellow
     }
 }
 
 function Should-ShowNotification {
-    param($Time)
+    param(`$Time)
     
-    $state = Get-LastNotificationState
-    $today = (Get-Date).Date
-    $todayNotifications = $state.LastNotifications | Where-Object { 
-        [DateTime]$_.Date -eq $today -and $_.Time -eq $Time 
+    `$state = Get-LastNotificationState
+    `$today = (Get-Date).Date
+    `$todayNotifications = `$state.LastNotifications | Where-Object { 
+        [DateTime]`$_.Date -eq `$today -and `$_.Time -eq `$Time 
     }
     
-    return $todayNotifications.Count -eq 0
+    return `$todayNotifications.Count -eq 0
 }
 
 function Show-CertificationNotification {
-    param($Time)
+    param(`$Time)
     
-    Write-Host "📢 Showing certification notification for $Time..." -ForegroundColor Green
+    Write-Host "📢 Showing certification notification for `$Time..." -ForegroundColor Green
     
     # Run the main script with arguments
-    $arguments = @("-WindowStyle", "Normal") + $MainScriptArgs
-    Start-Process "pwsh.exe" -ArgumentList ("-ExecutionPolicy", "Bypass", "-File", "$MainScriptPath") + $arguments -WindowStyle Minimized
+    `$arguments = @("-WindowStyle", "Normal") + `$MainScriptArgs
+    Start-Process "pwsh.exe" -ArgumentList ("-ExecutionPolicy", "Bypass", "-File", "`$MainScriptPath") + `$arguments -WindowStyle Minimized
     
     # Update state
-    $state = Get-LastNotificationState
-    if (-not $state.LastNotifications) { $state.LastNotifications = @() }
+    `$state = Get-LastNotificationState
+    if (-not `$state.LastNotifications) { `$state.LastNotifications = @() }
     
-    $state.LastNotifications += @{
+    `$state.LastNotifications += @{
         Date = (Get-Date).Date.ToString("yyyy-MM-dd")
-        Time = $Time
+        Time = `$Time
         Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     }
     
     # Keep only last 7 days of history
-    $cutoff = (Get-Date).AddDays(-7).Date
-    $state.LastNotifications = $state.LastNotifications | Where-Object { 
-        [DateTime]$_.Date -ge $cutoff 
+    `$cutoff = (Get-Date).AddDays(-7).Date
+    `$state.LastNotifications = `$state.LastNotifications | Where-Object { 
+        [DateTime]`$_.Date -ge `$cutoff 
     }
     
-    Save-NotificationState $state
+    Save-NotificationState `$state
 }
 
 # Main monitoring loop
-Write-Host "🧠 Smart Certificate Monitor started at $(Get-Date)" -ForegroundColor Cyan
-Write-Host "⏰ Notification times: $($NotificationTimes -join ', ')" -ForegroundColor White
-Write-Host "🔄 Checking every $CheckIntervalMinutes minutes for user activity" -ForegroundColor White
+Write-Host "🧠 Smart Certificate Monitor started at `$(Get-Date)" -ForegroundColor Cyan
+Write-Host "⏰ Notification times: `$(`$NotificationTimes -join ', ')" -ForegroundColor White
+Write-Host "🔄 Checking every `$CheckIntervalMinutes minutes for user activity" -ForegroundColor White
 
-while ($true) {
+while (`$true) {
     try {
-        $currentTime = Get-Date
-        $currentTimeString = $currentTime.ToString("HH:mm")
+        `$currentTime = Get-Date
+        `$currentTimeString = `$currentTime.ToString("HH:mm")
         
         # Check if it's time for a notification
-        foreach ($notificationTime in $NotificationTimes) {
-            if ($currentTimeString -eq $notificationTime) {
-                Write-Host "🕐 Notification time reached: $notificationTime" -ForegroundColor Yellow
+        foreach (`$notificationTime in `$NotificationTimes) {
+            if (`$currentTimeString -eq `$notificationTime) {
+                Write-Host "🕐 Notification time reached: `$notificationTime" -ForegroundColor Yellow
                 
-                if (Should-ShowNotification $notificationTime) {
+                if (Should-ShowNotification `$notificationTime) {
                     if (Test-UserActivity) {
                         Write-Host "✅ User is active, showing notification" -ForegroundColor Green
-                        Show-CertificationNotification $notificationTime
+                        Show-CertificationNotification `$notificationTime
                     } else {
                         Write-Host "😴 User appears idle, skipping notification" -ForegroundColor Gray
                         Write-Host "💡 Will check again later when user becomes active" -ForegroundColor Cyan
                     }
                 } else {
-                    Write-Host "✅ Already notified at $notificationTime today" -ForegroundColor Gray
+                    Write-Host "✅ Already notified at `$notificationTime today" -ForegroundColor Gray
                 }
                 break
             }
         }
         
         # Sleep for the check interval
-        Start-Sleep -Seconds ($CheckIntervalMinutes * 60)
+        Start-Sleep -Seconds (`$CheckIntervalMinutes * 60)
         
     } catch {
-        Write-Host "❌ Error in monitoring loop: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "❌ Error in monitoring loop: `$(`$_.Exception.Message)" -ForegroundColor Red
         Start-Sleep -Seconds 300  # Wait 5 minutes before retrying
     }
 }
