@@ -425,96 +425,83 @@ The script provides a robust multi-tier notification system:
 
 ### Personal Monitoring
 ```powershell
-# Smart monitoring (recommended) - twice daily when active
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "ABC123XYZ"
-
-# Simple startup monitoring 
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Startup" -ShareCode "ABC123XYZ"
-
-# Discrete login monitoring
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Registry" -ShareCode "ABC123XYZ"
+# View recent log entries
+Get-Content "cert-expiry.log" -Tail 50
 ```
 
-### Team/Multiple Users
-```powershell
-# Monitor multiple people with different automation names
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -AutomationName "JohnCerts" -ShareCode "XYZ789"
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -AutomationName "JaneCerts" -ShareCode "DEF456"
-```
+## 🏗️ Architecture
 
-### Email Integration
-```powershell
-# Setup automation with email notifications
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Smart" -ShareCode "ABC123XYZ" -SendEmail
+### Technology Stack
+- **PowerShell 5.1+** - Core scripting engine
+- **Selenium WebDriver 3.0+** - Browser automation
+- **Windows Task Scheduler** - Automated execution
+- **WinRT/BurntToast** - Notification systems
+- **Microsoft Edge/Chrome** - Web browser engines
 
-# Manual check with email
-.\get-learncerts-api.ps1 -ShareCode "ABC123XYZ" -SendEmail -VerboseConsole
-```
+### Security & Privacy
+- ✅ **Uses public transcript URLs** (no authentication required)
+- ✅ **No credential storage** or transmission
+- ✅ **Local processing only** - no data sent to external services
+- ✅ **Temporary browser profiles** automatically cleaned up
+- ✅ **All logging is local** to cert-expiry.log file
 
-### Cleanup
-```powershell
-# Remove all automation
-.\get-learncerts-api.ps1 -CreateAutomation -AutomationMethod "Remove"
-```
+### Dependencies (Auto-Managed)
+The script automatically manages all dependencies:
+- **Selenium PowerShell Module** (≥3.0.0)
+- **BurntToast Module** (≥0.8.0)
+- **ChromeDriver/MSEdgeDriver** binaries
+- **.NET Framework/.NET Core** (included with PowerShell)
 
-## 🛠️ System Requirements
+## 📝 Changelog
 
-- **Windows 10/11** (with working notification system)
-- **PowerShell 5.1+** (PowerShell 7+ recommended for best performance)
-- **Internet connection** for Microsoft Learn API access
-- **Optional**: BurntToast module for enhanced toast notifications
-- **For email**: SMTP server configuration in script variables
+### Version 2.0 (2025-09-29)
+- ✨ Added `-AutomationRunSync` parameter for immediate execution
+- 🎨 Enhanced automation creation with comprehensive user feedback
+- 📖 Improved user guidance with helpful tips and emojis
+- ✅ Verified clean environment functionality
+- ⚡ Optimized Microsoft Edge performance (2x faster than Chrome)
+- 📚 Enhanced documentation with real-world examples
 
-## �️ Configuration Options
+### Version 1.0 (2025-09-29)
+- 🎉 Initial release with Chrome and Edge support
+- 🛠️ Advanced browser conflict resolution
+- ⏰ Windows Scheduled Task automation
+- 🔔 Multi-tier notification system
+- 🔍 Comprehensive error handling and debugging
+- 📦 Auto-managed dependencies
 
-### Basic Usage Parameters
-- `-ShareCode` or `-TranscriptUrl`: Your Microsoft Learn transcript identifier
-- `-SendEmail`: Enable email notifications (requires SMTP configuration)
-- `-VerboseConsole`: Detailed console output for troubleshooting
-- `-Plain`: Disable colors and emojis in console output
+## 🤝 Contributing
 
-### Automation Parameters  
-- `-CreateAutomation`: Enable automation setup mode
-- `-AutomationMethod`: Choose automation type (Startup/Registry/Smart/Remove)
-- `-AutomationName`: Custom name for automation instance (default: LearnCertMonitorAPI)
+Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
 
-### Advanced Parameters
-- `-DebugJson`: Save API response to debug-transcript.json file
-- `-TaskSchedulerDebug`: Enhanced debugging output (legacy compatibility)
+### Development Setup
+1. Fork the repository
+2. Create a feature branch
+3. Test your changes thoroughly
+4. Submit a pull request with clear description
 
-## 🆘 Support & Troubleshooting
+## 📄 License
 
-### Common Issues
-1. **No notifications appearing**: Check Windows notification settings
-2. **Email not working**: Verify SMTP configuration in script variables section
-3. **API errors**: Verify your share code is correct and internet connection is working
-4. **Automation not running**: Check automation setup with verbose output
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Getting Help
-- **🐛 Bug Reports**: [GitHub Issues](https://github.com/HarriJaakkonen/Learn-Cert-Monitor/issues)
-- **💬 Questions**: [GitHub Discussions](https://github.com/HarriJaakkonen/Learn-Cert-Monitor/discussions)
-- **📖 Full Examples**: Check the script's built-in help: `Get-Help .\get-learncerts-api.ps1 -Full`
+## 👨‍💻 Author
 
-## 🏆 Performance Comparison
+**Harri Jaakkonen**
+- Email: harri.jaakkonen@yourdomain.com
+- LinkedIn: [Connect with me](https://linkedin.com/in/harrijaakkonen)
 
-| Metric | API Version 2.0 | Legacy Versions |
-|--------|-----------------|-----------------|
-| **Execution Speed** | ⚡ 2-3 seconds | 🐌 30-60+ seconds |
-| **Reliability** | 🎯 99%+ success | ⚠️ ~85% success |
-| **Setup Complexity** | ✅ Simple (4 methods) | 📦 Complex (15+ parameters) |
-| **Admin Rights** | ❌ Never required | ⚠️ Sometimes required |
-| **Resource Usage** | 💚 Minimal | 🔴 High (browser) |
-| **Maintenance** | 🔧 Zero | 🔧 Regular updates needed |
-| **User Experience** | 🎯 Streamlined | 😵 Overwhelming |
+## 🙏 Acknowledgments
+
+Special thanks to:
+- **PowerShell Community** for excellent modules and documentation
+- **Selenium Project** for robust browser automation capabilities
+- **Microsoft Learn Team** for providing public transcript functionality
+- **Contributors** who help improve this project
 
 ---
 
-## 🎉 Why This Version?
+## ⭐ Star This Project
 
-**✨ Simplified**: Reduced parameter complexity by 80% while maintaining all functionality  
-**🚀 Fast**: Direct API access eliminates browser overhead  
-**🛡️ Reliable**: No browser dependencies or WebDriver conflicts  
-**🔧 Zero Maintenance**: Set it up once, forget about it  
-**👤 User-Friendly**: No admin rights, simple automation, clear documentation  
+If this tool helps you stay on top of your Microsoft certifications, please consider giving it a star! ⭐
 
-**⭐ Found this useful? Star the repository and help others discover this tool!**
+**Never miss a renewal deadline again!** 🎯
