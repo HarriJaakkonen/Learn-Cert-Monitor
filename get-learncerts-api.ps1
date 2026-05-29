@@ -242,7 +242,7 @@ try {
     $hostInfo = "PS $($PSVersionTable.PSVersion) on $env:COMPUTERNAME (User: $env:USERNAME)"
     
     # Enhanced Task Scheduler detection and logging
-    $isTaskScheduler = [Environment]::UserInteractive -eq $false -or $env:SESSIONNAME -eq $null
+    $isTaskScheduler = -not [Environment]::UserInteractive -or $null -eq $env:SESSIONNAME
     $sessionInfo = if ($isTaskScheduler) { "Task Scheduler" } else { "Interactive Session" }
     $environmentInfo = "Session: $sessionInfo, SessionName: $($env:SESSIONNAME), ScriptRoot: $ScriptRoot"
     
@@ -278,7 +278,6 @@ catch {}
 # Notification settings
 $ShowPopupNotification = $true
 $NotificationDurationSeconds = 30
-$AppDisplayName = 'Learn Cert Monitor API'
 $AppUserModelId = 'LearnCertMonitorAPI'
 $NotificationTTLMinutes = 60
 $NotificationTag = 'cert-expiry-api'
@@ -371,6 +370,21 @@ function Format-TruncatedText {
     return $Text.Substring(0, $Width - 1) + '…'
 }
 
+function Get-PowerShellExecutable {
+    # Prefer PowerShell 7 when available, but support Windows PowerShell 5.1-only systems
+    $pwshCmd = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+    if ($pwshCmd) {
+        return $pwshCmd.Source
+    }
+
+    $winPsCmd = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if ($winPsCmd) {
+        return $winPsCmd.Source
+    }
+
+    throw "Could not find pwsh.exe or powershell.exe on this system."
+}
+
 function Show-TableSummary {
     [CmdletBinding(DefaultParameterSetName = 'Direct')]
     param(
@@ -434,7 +448,7 @@ function Show-TableSummary {
     }
 }
 
-function Extract-ShareCodeFromUrl {
+function Get-ShareCodeFromUrl {
     param([string]$Url)
     
     if ([string]::IsNullOrWhiteSpace($Url)) {
@@ -489,7 +503,7 @@ function ConvertFrom-TranscriptAPI {
     Write-Info "Parsing API response..."
     
     # Helper function to parse dates reliably
-    function Parse-CertificationDate {
+    function ConvertTo-CertificationDate {
         param([string]$DateString)
         
         if ([string]::IsNullOrWhiteSpace($DateString)) {
@@ -617,13 +631,13 @@ function ConvertFrom-TranscriptAPI {
             
             # Extract earned date - based on actual API structure
             if ($cert.dateEarned) {
-                $certObj.Earned = Parse-CertificationDate -DateString $cert.dateEarned
+                $certObj.Earned = ConvertTo-CertificationDate -DateString $cert.dateEarned
                 if (-not $certObj.Earned) {
                     Write-DebugMsg "Could not parse earned date: $($cert.dateEarned)"
                 }
             }
             elseif ($cert.earnedDate) {
-                $certObj.Earned = Parse-CertificationDate -DateString $cert.earnedDate
+                $certObj.Earned = ConvertTo-CertificationDate -DateString $cert.earnedDate
                 if (-not $certObj.Earned) {
                     Write-DebugMsg "Could not parse earned date: $($cert.earnedDate)"
                 }
@@ -631,25 +645,25 @@ function ConvertFrom-TranscriptAPI {
             
             # Extract expiration date - based on actual API structure
             if ($cert.expiration) {
-                $certObj.Expiration = Parse-CertificationDate -DateString $cert.expiration
+                $certObj.Expiration = ConvertTo-CertificationDate -DateString $cert.expiration
                 if (-not $certObj.Expiration) {
                     Write-DebugMsg "Could not parse expiration date: $($cert.expiration)"
                 }
             }
             elseif ($cert.expirationDate) {
-                $certObj.Expiration = Parse-CertificationDate -DateString $cert.expirationDate
+                $certObj.Expiration = ConvertTo-CertificationDate -DateString $cert.expirationDate
                 if (-not $certObj.Expiration) {
                     Write-DebugMsg "Could not parse expiration date: $($cert.expirationDate)"
                 }
             }
             elseif ($cert.dateExpires) {
-                $certObj.Expiration = Parse-CertificationDate -DateString $cert.dateExpires
+                $certObj.Expiration = ConvertTo-CertificationDate -DateString $cert.dateExpires
                 if (-not $certObj.Expiration) {
                     Write-DebugMsg "Could not parse expiration date: $($cert.dateExpires)"
                 }
             }
             elseif ($cert.expires) {
-                $certObj.Expiration = Parse-CertificationDate -DateString $cert.expires
+                $certObj.Expiration = ConvertTo-CertificationDate -DateString $cert.expires
                 if (-not $certObj.Expiration) {
                     Write-DebugMsg "Could not parse expiration date: $($cert.expires)"
                 }
@@ -739,7 +753,7 @@ function Send-AlertEmailGraph {
 #endregion ============================
 
 #region ======= NOTIFICATION =======
-function Ensure-AppIcon {
+function Get-AppIconPath {
     # Ensures a local Microsoft logo PNG exists and returns its absolute file path, or $null on failure
     try {
         $assets = Join-Path $ScriptRoot 'assets'
@@ -788,36 +802,37 @@ function Show-ToastNotification {
         [string]$Message
     )
     
-    # Primary notification method: Balloon tips (reliable from scheduled tasks)
-    try {
-        Write-DebugMsg "Attempting balloon tip notification first (most reliable for scheduled tasks)"
-        Show-BalloonNotification -Title $Title -Message $Message -DurationSeconds $NotificationDurationSeconds
-        Write-Log "Successfully displayed balloon tip notification" "Green"
-        
-        # Also try toast notification as secondary method if available
+    # Interactive sessions should prefer modern toast; non-interactive sessions are more reliable with balloon tips
+    if ([Environment]::UserInteractive) {
         try {
-            Write-DebugMsg "Attempting additional toast notification"
-            Show-ModernToastNotification -Title $Title -Message $Message
+            Write-DebugMsg "Attempting toast notification in interactive session"
+            if (Show-ModernToastNotification -Title $Title -Message $Message) {
+                return $true
+            }
         }
         catch {
-            Write-DebugMsg "Toast notification failed (expected from scheduled tasks): $($_.Exception.Message)"
+            Write-DebugMsg "Toast notification failed in interactive session: $($_.Exception.Message)"
         }
-        
-        return $true
-    }
-    catch {
-        Write-Log "Balloon notification failed, trying alternative methods..." "Yellow"
-        
-        # Try toast notifications as fallback
+
         try {
-            return Show-ModernToastNotification -Title $Title -Message $Message
+            Write-DebugMsg "Falling back to balloon tip notification"
+            return Show-BalloonNotification -Title $Title -Message $Message -DurationSeconds $NotificationDurationSeconds
         }
         catch {
             Write-Log "All GUI notification methods failed, creating desktop file as last resort..." "Yellow"
-            # Desktop file only as absolute last resort
             Write-DesktopNotificationFile -Title $Title -Message $Message
             return $true
         }
+    }
+
+    try {
+        Write-DebugMsg "Attempting balloon tip notification first (most reliable for non-interactive sessions)"
+        return Show-BalloonNotification -Title $Title -Message $Message -DurationSeconds $NotificationDurationSeconds
+    }
+    catch {
+        Write-Log "Balloon notification failed, creating desktop file as last resort..." "Yellow"
+        Write-DesktopNotificationFile -Title $Title -Message $Message
+        return $true
     }
 }
 
@@ -831,7 +846,7 @@ function Show-ModernToastNotification {
     try {
         $appId = $AppUserModelId
 
-        $iconPath = Ensure-AppIcon
+        $iconPath = Get-AppIconPath
         Write-DebugMsg "Icon path for toast: $iconPath"
         
         [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -892,12 +907,12 @@ function Show-ModernToastNotification {
         Write-Log $userFriendlyMessage "Yellow"
         
         # Try BurntToast fallback
-        if (Ensure-BurntToastModule) {
+        if (Initialize-BurntToastModule) {
             try {
                 Import-Module BurntToast -ErrorAction Stop
                 
                 # Create BurntToast notification with Microsoft logo if available
-                $iconPath = Ensure-AppIcon
+                $iconPath = Get-AppIconPath
                 Write-DebugMsg "BurntToast icon path: $iconPath"
                 
                 $toastParams = @{
@@ -947,7 +962,7 @@ function Show-ModernToastNotification {
     }
 }
 
-function Ensure-BurntToastModule {
+function Initialize-BurntToastModule {
     try {
         if (Get-Module -ListAvailable -Name BurntToast | Where-Object { $_.Version -ge [version]'0.8.0' }) { return $true }
         
@@ -963,7 +978,7 @@ function Ensure-BurntToastModule {
         }
         
         # Check if running under Task Scheduler
-        $isTaskScheduler = [Environment]::UserInteractive -eq $false -or $null -eq $env:SESSIONNAME
+        $isTaskScheduler = -not [Environment]::UserInteractive -or $null -eq $env:SESSIONNAME
         
         # Ensure NuGet provider
         $provider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
@@ -1020,23 +1035,9 @@ function Show-BalloonNotification {
         
         $notification = New-Object System.Windows.Forms.NotifyIcon
         
-        # Try to use Microsoft logo icon if available, otherwise use system icon
-        $iconPath = Ensure-AppIcon
-        if ($iconPath -and (Test-Path $iconPath)) {
-            try {
-                $notification.Icon = New-Object System.Drawing.Icon($iconPath)
-                Write-DebugMsg "Using Microsoft logo for balloon notification: $iconPath"
-            }
-            catch {
-                # Fallback to system icon if custom icon fails
-                $notification.Icon = [System.Drawing.SystemIcons]::Information
-                Write-DebugMsg "Microsoft icon failed, using system icon: $($_.Exception.Message)"
-            }
-        }
-        else {
-            $notification.Icon = [System.Drawing.SystemIcons]::Information
-            Write-DebugMsg "No custom icon available, using system information icon"
-        }
+        # NotifyIcon expects an .ico; the embedded asset is PNG for toast usage, so use system icon here
+        $notification.Icon = [System.Drawing.SystemIcons]::Information
+        Write-DebugMsg "Using system information icon for balloon notification"
         
         # Use Information icon type for professional appearance
         $notification.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info
@@ -1181,7 +1182,7 @@ function Show-CertExpiryNotification {
 #endregion ============================
 
 #region ======= USER AUTOMATION (NO ADMIN) =======
-function Setup-UserAutomation {
+function Set-UserAutomation {
     <#
     .SYNOPSIS
     Sets up automated execution without requiring administrator privileges
@@ -1203,13 +1204,13 @@ function Setup-UserAutomation {
     Remove existing automation instead of creating it
     
     .EXAMPLE
-    Setup-UserAutomation -Method "Startup" -ScriptPath "C:\Scripts\get-learncerts-api.ps1"
+    Set-UserAutomation -Method "Startup" -ScriptPath "C:\Scripts\get-learncerts-api.ps1"
     
     .EXAMPLE
-    Setup-UserAutomation -Method "Registry" -ScriptPath "C:\Scripts\get-learncerts-api.ps1" -Arguments @("-ShareCode", "ABC123")
+    Set-UserAutomation -Method "Registry" -ScriptPath "C:\Scripts\get-learncerts-api.ps1" -Arguments @("-ShareCode", "ABC123")
     
     .EXAMPLE
-    Setup-UserAutomation -Method "Startup" -Remove
+    Set-UserAutomation -Method "Startup" -Remove
     #>
     param(
         [Parameter(Mandatory)]
@@ -1225,6 +1226,7 @@ function Setup-UserAutomation {
     
     try {
         Write-Host "🔧 Setting up user automation (no admin required)..." -ForegroundColor Cyan
+        $powerShellExe = Get-PowerShellExecutable
         
         if ($Method -eq "Startup") {
             $startupPath = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
@@ -1246,7 +1248,7 @@ function Setup-UserAutomation {
                 # Create WScript.Shell COM object to create shortcut
                 $WshShell = New-Object -ComObject WScript.Shell
                 $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-                $Shortcut.TargetPath = "pwsh.exe"
+                $Shortcut.TargetPath = $powerShellExe
             
                 # Build arguments string
                 $argString = if ($Arguments.Count -gt 0) { " " + ($Arguments -join " ") } else { "" }
@@ -1283,7 +1285,7 @@ function Setup-UserAutomation {
         
             # Build command string
             $argString = if ($Arguments.Count -gt 0) { " " + ($Arguments -join " ") } else { "" }
-            $command = "pwsh.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`"$argString"
+            $command = "`"$powerShellExe`" -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$ScriptPath`"$argString"
         
             try {
                 Set-ItemProperty -Path $regPath -Name $regName -Value $command
@@ -1315,7 +1317,7 @@ function Setup-UserAutomation {
 #endregion ============================
 
 #region ======= SMART ACTIVITY-BASED TRIGGERS =======
-function Setup-SmartActivityTrigger {
+function Set-SmartActivityTrigger {
     <#
     .SYNOPSIS
     Sets up smart activity-based triggers that monitor user activity to show notifications at optimal times
@@ -1335,10 +1337,10 @@ function Setup-SmartActivityTrigger {
     Remove existing smart trigger instead of creating it
     
     .EXAMPLE
-    Setup-SmartActivityTrigger -ScriptPath "C:\Scripts\get-learncerts-api.ps1" -Arguments @("-ShareCode", "ABC123")
+    Set-SmartActivityTrigger -ScriptPath "C:\Scripts\get-learncerts-api.ps1" -Arguments @("-ShareCode", "ABC123")
     
     .EXAMPLE
-    Setup-SmartActivityTrigger -Remove
+    Set-SmartActivityTrigger -Remove
     #>
     param(
         [string]$ScriptPath = $script:MyInvocation.MyCommand.Path,
@@ -1348,6 +1350,7 @@ function Setup-SmartActivityTrigger {
     
     try {
         Write-Host "🧠 Setting up smart activity-based triggers..." -ForegroundColor Cyan
+        $powerShellExe = Get-PowerShellExecutable
         
         # Create the monitoring script path
         $monitorScriptPath = Join-Path (Split-Path $ScriptPath -Parent) "cert-monitor-smart.ps1"
@@ -1360,7 +1363,7 @@ function Setup-SmartActivityTrigger {
             }
             
             # Remove from startup
-            Setup-UserAutomation -Method "Startup" -Remove
+            Set-UserAutomation -Method "Startup" -Remove
             return $true
         }
         
@@ -1388,6 +1391,19 @@ Generated on: $(Get-Date)
 
 # State file to track last notification
 `$StateFile = Join-Path `$env:TEMP "cert-monitor-state.json"
+`$MutexName = "Global\\LearnCertMonitorSmart"
+
+try {
+    `$script:SingleInstanceMutex = New-Object System.Threading.Mutex(`$false, `$MutexName)
+    `$hasHandle = `$script:SingleInstanceMutex.WaitOne(0, `$false)
+    if (-not `$hasHandle) {
+        Write-Host "ℹ️ Smart monitor already running. Exiting duplicate instance." -ForegroundColor Yellow
+        exit 0
+    }
+}
+catch {
+    Write-Host "⚠️ Could not acquire single-instance lock, continuing: `$(`$_.Exception.Message)" -ForegroundColor Yellow
+}
 
 function Test-UserActivity {
     <#
@@ -1468,7 +1484,7 @@ function Show-CertificationNotification {
     
     # Run the main script with arguments
     `$arguments = @("-WindowStyle", "Normal") + `$MainScriptArgs
-    Start-Process "pwsh.exe" -ArgumentList ("-ExecutionPolicy", "Bypass", "-File", "`$MainScriptPath") + `$arguments -WindowStyle Minimized
+    Start-Process "$powerShellExe" -ArgumentList ("-ExecutionPolicy", "Bypass", "-File", "`$MainScriptPath") + `$arguments -WindowStyle Minimized
     
     # Update state
     `$state = Get-LastNotificationState
@@ -1534,7 +1550,7 @@ while (`$true) {
         Write-Host "✅ Created smart monitoring script: $monitorScriptPath" -ForegroundColor Green
         
         # Set up the monitoring script to run at startup (Smart automation uses Startup method for the monitor script)
-        $success = Setup-UserAutomation -Method "Startup" -ScriptPath $monitorScriptPath -Arguments @()
+        $success = Set-UserAutomation -Method "Startup" -ScriptPath $monitorScriptPath -Arguments @()
         
         if ($success) {
             Write-Host "✅ Smart activity-based triggers configured successfully" -ForegroundColor Green
@@ -1572,7 +1588,7 @@ if ($CreateAutomation) {
         
         # Remove startup automation
         try {
-            $result = Setup-UserAutomation -Method "Startup" -Remove
+            $result = Set-UserAutomation -Method "Startup" -Remove
             if ($result) {
                 Write-Color "✅ Removed startup automation" ([ConsoleColor]::Green)
                 $removed = $true
@@ -1582,7 +1598,7 @@ if ($CreateAutomation) {
         
         # Remove registry automation  
         try {
-            $result = Setup-UserAutomation -Method "Registry" -Remove
+            $result = Set-UserAutomation -Method "Registry" -Remove
             if ($result) {
                 Write-Color "✅ Removed registry automation" ([ConsoleColor]::Green)
                 $removed = $true
@@ -1592,7 +1608,7 @@ if ($CreateAutomation) {
         
         # Remove smart trigger
         try {
-            $result = Setup-SmartActivityTrigger -Remove
+            $result = Set-SmartActivityTrigger -Remove
             if ($result) {
                 Write-Color "✅ Removed smart activity triggers" ([ConsoleColor]::Green)
                 $removed = $true
@@ -1612,7 +1628,7 @@ if ($CreateAutomation) {
     # Validate that we have either TranscriptUrl or ShareCode for setup
     $finalShareCode = $null
     if ($TranscriptUrl) {
-        $finalShareCode = Extract-ShareCodeFromUrl -Url $TranscriptUrl
+        $finalShareCode = Get-ShareCodeFromUrl -Url $TranscriptUrl
         if (-not $finalShareCode) {
             Write-Color "Could not extract share code from URL: $TranscriptUrl" ([ConsoleColor]::Red)
             Write-Color "Please provide a valid Microsoft Learn transcript share URL." ([ConsoleColor]::Yellow)
@@ -1639,7 +1655,7 @@ if ($CreateAutomation) {
     switch ($AutomationMethod) {
         "Startup" {
             Write-Color "📂 Setting up startup folder automation..." ([ConsoleColor]::Cyan)
-            $success = Setup-UserAutomation -Method "Startup" -Arguments $automationArgs
+            $success = Set-UserAutomation -Method "Startup" -Arguments $automationArgs
             if ($success) {
                 Write-Color "✅ Startup automation configured successfully." ([ConsoleColor]::Green)
                 Write-Color "🔄 Script will run automatically at Windows startup." ([ConsoleColor]::Cyan)
@@ -1648,7 +1664,7 @@ if ($CreateAutomation) {
         }
         "Registry" {
             Write-Color "📋 Setting up registry run key automation..." ([ConsoleColor]::Cyan)
-            $success = Setup-UserAutomation -Method "Registry" -Arguments $automationArgs
+            $success = Set-UserAutomation -Method "Registry" -Arguments $automationArgs
             if ($success) {
                 Write-Color "✅ Registry automation configured successfully." ([ConsoleColor]::Green)
                 Write-Color "🔄 Script will run automatically at user login." ([ConsoleColor]::Cyan)
@@ -1657,7 +1673,7 @@ if ($CreateAutomation) {
         }
         "Smart" {
             Write-Color "🧠 Setting up smart activity-based triggers..." ([ConsoleColor]::Cyan)
-            $success = Setup-SmartActivityTrigger -Arguments $automationArgs
+            $success = Set-SmartActivityTrigger -Arguments $automationArgs
             if ($success) {
                 Write-Color "✅ Smart activity-based triggers configured successfully." ([ConsoleColor]::Green)
                 Write-Color "⏰ Will show notifications twice daily (9 AM & 3 PM) when you're active." ([ConsoleColor]::Cyan)
@@ -1692,7 +1708,7 @@ try {
     # Determine the share code to use
     $finalShareCode = $null
     if ($TranscriptUrl) {
-        $finalShareCode = Extract-ShareCodeFromUrl -Url $TranscriptUrl
+        $finalShareCode = Get-ShareCodeFromUrl -Url $TranscriptUrl
         if (-not $finalShareCode) {
             throw "Could not extract share code from URL: $TranscriptUrl. Please provide a valid Microsoft Learn transcript share URL."
         }
